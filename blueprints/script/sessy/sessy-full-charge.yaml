@@ -3,7 +3,7 @@ blueprint:
   description: Charge a Sessy until it's full
   author: PimDoos
   domain: script
-  source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/automation/sessy/sessy-full-charge.yaml
+  source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/script/sessy/sessy-full-charge.yaml
   input:
     battery_device:
         name: Battery
