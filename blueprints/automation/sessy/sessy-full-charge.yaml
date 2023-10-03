@@ -1,0 +1,131 @@
+blueprint:
+  name: Sessy Full Charge
+  description: Charge a Sessy until it's full
+  author: PimDoos
+  domain: script
+  source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/automation/sessy/sessy-full-charge.yaml
+  input:
+    battery_device:
+        name: Battery
+        description: Sessy Battery devices to charge
+        selector:
+          device:
+            integration: sessy
+            multiple: true
+    battery_soc_max:
+      name: Maximum State of Charge
+      description: Charge up to this percentage
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+    charge_power:
+      name: Charge power
+      description: Total charge power (W). If multiple batteries are specified, this value will be shared equally among batteries.
+      default: 2000
+      selector:
+        number:
+          mode: box
+          min: 50
+    charge_timeout:
+      name: Charge timeout
+      description: Maximum time before resuming normal operation
+      selector:
+        duration:
+    
+    end_strategy:
+      name: End strategy
+      description: Which strategy to activate after full charge is complete
+      selector:
+        select:
+          options:
+            - idle
+            - nom
+            - roi
+            - api
+
+mode: restart
+icon: mdi:battery-arrow-up
+
+
+sequence:
+  - variables:
+      device_ids: !input battery_device
+      battery_soc_max: !input battery_soc_max
+      charge_power: !input charge_power
+  - variables:
+      device_ids: |
+        {% if device_ids is string %}{% set device_ids = [ device_ids ] %}{% endif %}
+        {{ device_ids }}
+      battery_count: |
+        {{ device_ids | count }}
+      power_setpoint: |
+        {{ (charge_power | int * -1) / battery_count }}
+      
+      # Get Entity IDs from device IDs
+      battery_strategy_entity: |
+        {% set entities = namespace(strategy=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.strategy = entities.strategy + [device_entities(device_id) | list | select("search","_power_strategy$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.strategy }}
+      battery_setpoint_entity: |
+        {% set entities = namespace(setpoint=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.setpoint = entities.setpoint + [device_entities(device_id) | list | select("search","_power_setpoint$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.setpoint }}
+      battery_soc_entity: |
+        {% set entities = namespace(soc=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_state_of_charge$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.soc }}
+      battery_state_entity: |
+        {% set entities = namespace(state=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.state = entities.state + [device_entities(device_id) | list | select("search","_system_state$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.state }}
+
+  - service: select.select_option
+    data:
+      option: api
+    target:
+      entity_id: |
+        {{ battery_strategy_entity }}
+
+  - service: number.set_value
+    data:
+      value: |
+        {{ power_setpoint }}
+    target:
+      entity_id: |
+        {{ battery_setpoint_entity }}
+
+  - timeout: !input charge_timeout
+    wait_for_trigger:
+      - platform: template
+        value_template: |
+          {{ (battery_soc_entity | map("states") | map("int") | list) | min > battery_soc_max }}
+
+      - platform: template
+        value_template: |
+          {% set battery_state = battery_state_entity | map("states") | list %}
+          {{ battery_state[0] == "battery_full" }}
+          {{ battery_state | unique | list | length == 1 }}
+
+  - service: number.set_value
+    data:
+      value: 0
+    target:
+      entity_id: |
+        {{ battery_setpoint_entity }}
+  
+  - service: select.select_option
+    data:
+      option: !input end_strategy
+    target:
+      entity_id: |
+        {{ battery_strategy_entity }}
