@@ -67,8 +67,19 @@ icon: mdi:battery-arrow-up
 sequence:
   - variables:
       device_ids: !input battery_device
-      battery_soc_max: !input battery_soc_max
-      charge_power: !input charge_power
+  - if:
+    - condition: template
+      value_template: "{{ battery_soc_max == null }}"
+    then:
+      - variables:
+        battery_soc_max: !input battery_soc_max
+  - if:
+    - condition: template
+      value_template: "{{ charge_power == null }}"
+    then:
+      - variables:
+        charge_power: !input charge_power
+        
   - variables:
       device_ids: |
         {% if device_ids is string %}{% set device_ids = [ device_ids ] %}{% endif %}
