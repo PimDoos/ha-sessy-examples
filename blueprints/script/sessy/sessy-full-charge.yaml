@@ -3,7 +3,7 @@ blueprint:
   description: Charge a Sessy until it's full
   author: PimDoos
   domain: script
-  source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/script/sessy/sessy-full-charge.yaml
+  source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/automation/sessy/sessy-full-charge.yaml
   input:
     battery_device:
         name: Battery
@@ -33,7 +33,21 @@ blueprint:
       description: Maximum time before resuming normal operation
       selector:
         duration:
-    
+
+    start_action:
+      name: Start action
+      description: Series of actions to execute before starting charging
+      default: []
+      selector:
+        action:
+
+    end_action:
+      name: End action
+      description: Series of actions to execute after charging finishes
+      default: []
+      selector:
+        action:
+
     end_strategy:
       name: End strategy
       description: Which strategy to activate after full charge is complete
@@ -44,6 +58,7 @@ blueprint:
             - nom
             - roi
             - api
+    
 
 mode: restart
 icon: mdi:battery-arrow-up
@@ -89,6 +104,8 @@ sequence:
         {% endfor %}
         {{ entities.state }}
 
+  - parallel: !input start_action
+
   - service: select.select_option
     data:
       option: api
@@ -129,3 +146,5 @@ sequence:
     target:
       entity_id: |
         {{ battery_strategy_entity }}
+
+  - parallel: !input end_action
