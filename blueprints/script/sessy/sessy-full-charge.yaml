@@ -69,15 +69,15 @@ sequence:
       device_ids: !input battery_device
   - if:
     - condition: template
-      value_template: "{{ battery_soc_max == null }}"
+      value_template: "{{ not battery_soc_max is defined }}"
     then:
-      - variables:
+    - variables:
         battery_soc_max: !input battery_soc_max
   - if:
     - condition: template
-      value_template: "{{ charge_power == null }}"
+      value_template: "{{ not charge_power is defined }}"
     then:
-      - variables:
+    - variables:
         charge_power: !input charge_power
         
   - variables:
