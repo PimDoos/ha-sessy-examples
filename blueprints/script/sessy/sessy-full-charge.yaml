@@ -3,7 +3,7 @@ blueprint:
   description: Charge a Sessy until it's full
   author: PimDoos
   domain: script
-  source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/automation/sessy/sessy-full-charge.yaml
+  source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/script/sessy/sessy-full-charge.yaml
   input:
     battery_device:
         name: Battery
@@ -67,19 +67,15 @@ icon: mdi:battery-arrow-up
 sequence:
   - variables:
       device_ids: !input battery_device
-  - if:
-    - condition: template
-      value_template: "{{ not battery_soc_max is defined }}"
-    then:
-    - variables:
-        battery_soc_max: !input battery_soc_max
-  - if:
-    - condition: template
-      value_template: "{{ not charge_power is defined }}"
-    then:
-    - variables:
-        charge_power: !input charge_power
-        
+      default_battery_soc_max: !input battery_soc_max
+      default_charge_power: !input charge_power
+
+  - variables:
+      battery_soc_max: |
+        {{ default_battery_soc_max if not battery_soc_max is defined else battery_soc_max }}
+      charge_power: |
+        {{ default_charge_power if not charge_power is defined else charge_power }}
+ 
   - variables:
       device_ids: |
         {% if device_ids is string %}{% set device_ids = [ device_ids ] %}{% endif %}
