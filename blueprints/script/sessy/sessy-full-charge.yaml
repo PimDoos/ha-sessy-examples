@@ -137,8 +137,7 @@ sequence:
       - platform: template
         value_template: |
           {% set battery_state = battery_state_entity | map("states") | list %}
-          {{ battery_state[0] == "battery_full" }}
-          {{ battery_state | unique | list | length == 1 }}
+          {{ battery_state[0] == "battery_full" and battery_state | unique | list | length == 1 }}
 
   - service: number.set_value
     data:
