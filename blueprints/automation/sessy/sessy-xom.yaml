@@ -39,6 +39,24 @@ blueprint:
         number:
           min: 50
           max: 2200
+    setpoint_min:
+      name: Minimum power setpoint
+      description: Minimum total setpoint for all batteries combined. If this is 0 or higher, charging is disabled.
+      default: -12000
+      selector:
+        number:
+          min: -12000
+          max: 12000
+          mode: box
+    setpoint_max:
+      name: Maximum power setpoint
+      description: Minimum total setpoint for all batteries combined. If this is 0 or lower, discharging is disabled.
+      default: 12000
+      selector:
+        number:
+          min: -12000
+          max: 12000
+          mode: box
     setpoint_target_value:
       name: Target value
       description: Target value (X) for the Grid entity
@@ -104,6 +122,8 @@ variables:
   offset_entity: !input offset_entity
   min_battery_level: !input battery_soc_min
   max_battery_level: !input battery_soc_max
+  min_setpoint: !input setpoint_min
+  max_setpoint: !input setpoint_max
 
 trigger:
   - platform: time_pattern
@@ -175,7 +195,7 @@ action:
             setpoint: >
               {% set load = battery + grid %}
               {% set setpoint_target = load - offset %}
-              {% set setpoint_smooth = [[setpoint_target, battery - smoothing] | max, battery + smoothing] | min %}
+              {% set setpoint_smooth = [[setpoint_target, battery - smoothing, min_setpoint] | max, battery + smoothing, max_setpoint] | min %}
               {{ setpoint_smooth }}
             
             priority_offset_template: !input priority_offset_template
