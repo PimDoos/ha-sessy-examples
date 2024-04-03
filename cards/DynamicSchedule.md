@@ -5,7 +5,7 @@ Since ha-sessy 0.6.0 and Sessy firmware 1.6.5, Sessy's dynamic schedule and ener
 
 With the [ApexCharts custom card](https://github.com/RomRider/apexcharts-card?tab=readme-ov-file#installation) you can show this data in a graph.
 
-![Dynamic schedule in a graph](image.png)
+![Dynamic schedule in a graph](DynamicSchedule.png)
 
 # Card configuration
 **Note**: Replace 'sessy_XXXX' in the examples below with the name of your own Sessy.
