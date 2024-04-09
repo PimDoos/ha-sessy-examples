@@ -15,7 +15,7 @@ With the [ApexCharts custom card](https://github.com/RomRider/apexcharts-card?ta
 type: custom:apexcharts-card
 header:
   show: true
-  title: ApexCharts-Card
+  title: Today
   show_states: true
   colorize_states: true
 span:
@@ -29,6 +29,7 @@ series:
   - entity: sensor.sessy_XXXX_power_schedule
     yaxis_id: power
     name: Power Schedule
+    curve: stepline
     data_generator: |
       let hours = [];
       for(var i = 0; i < 24; i++){ hours.push(i); }
@@ -41,6 +42,7 @@ series:
   - entity: sensor.sessy_XXXX_energy_price
     yaxis_id: price
     name: Energy Price
+    curve: stepline
     float_precision: 5
     data_generator: |
       let hours = [];
@@ -58,7 +60,7 @@ series:
 type: custom:apexcharts-card
 header:
   show: true
-  title: ApexCharts-Card
+  title: Tomorrow
   show_states: true
   colorize_states: true
 span:
@@ -73,6 +75,7 @@ series:
   - entity: sensor.sessy_XXXX_power_schedule
     yaxis_id: power
     name: Power Schedule
+    curve: stepline
     data_generator: |
       let hours = [];
       for(var i = 0; i < 24; i++){ hours.push(i); }
@@ -85,6 +88,7 @@ series:
   - entity: sensor.sessy_XXXX_energy_price
     yaxis_id: price
     name: Energy Price
+    curve: stepline
     float_precision: 5
     data_generator: |
       let hours = [];
