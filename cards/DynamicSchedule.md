@@ -18,11 +18,14 @@ header:
   title: Today
   show_states: true
   colorize_states: true
+now:
+  show: true
 span:
   start: day
 yaxis:
   - id: power
     decimals: 0
+    opposite: true
   - id: price
     decimals: 2
 series:
@@ -69,6 +72,7 @@ span:
 yaxis:
   - id: power
     decimals: 0
+    opposite: true
   - id: price
     decimals: 2
 series:
