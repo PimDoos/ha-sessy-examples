@@ -32,7 +32,7 @@ series:
   - entity: sensor.sessy_XXXX_power_schedule
     yaxis_id: power
     name: Power Schedule
-    curve: stepline
+    type: column
     data_generator: |
       let hours = [];
       for(var i = 0; i < 24; i++){ hours.push(i); }
@@ -79,7 +79,7 @@ series:
   - entity: sensor.sessy_XXXX_power_schedule
     yaxis_id: power
     name: Power Schedule
-    curve: stepline
+    type: column
     data_generator: |
       let hours = [];
       for(var i = 0; i < 24; i++){ hours.push(i); }
