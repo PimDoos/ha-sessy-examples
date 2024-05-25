@@ -1,8 +1,4 @@
-# Sessy HA views
-
-
-Deze lovelace views zijn gemaakt omdat ik de informatie die in de Sessy Portal zichtbaar was ook beschikbaar wil maken voor de HA views (one pain of glas)
-
+# Sessy Load / Unload view
 
 ## Requirements
 - Sessy batterij (duh)
@@ -16,10 +12,6 @@ Deze lovelace views zijn gemaakt omdat ik de informatie die in de Sessy Portal z
 1. Kopieer alle afbeeldingen "images/sessy naar je Home assistant systeem "/local/images/sessy".
 2. Creeer nieuwe LoveLave views zoals hieronder getoond.
 3. Vervang de sessy entities met jouw entitities in de lovelace yaml views
-
-
-
-### Sessy View 2
 
 ![Chart](README/screenshot3.png)
 ```
