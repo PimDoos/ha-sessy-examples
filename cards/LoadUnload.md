@@ -6,12 +6,10 @@
 - [Apexcharts LoveLace](https://github.com/RomRider/apexcharts-card)
 - Home Assistant version 2022.7 or newer.
 
-
 ## Installation
 
-1. Kopieer alle afbeeldingen "images/sessy naar je Home assistant systeem "/local/images/sessy".
-2. Creeer nieuwe LoveLave views zoals hieronder getoond.
-3. Vervang de sessy entities met jouw entitities in de lovelace yaml views
+1. Creeer nieuwe LoveLave views zoals hieronder getoond.
+2. Vervang de sessy entities met jouw entitities in de lovelace yaml views
 
 ![Chart](LoadUnload.png)
 ```
