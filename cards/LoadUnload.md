@@ -13,7 +13,7 @@
 2. Creeer nieuwe LoveLave views zoals hieronder getoond.
 3. Vervang de sessy entities met jouw entitities in de lovelace yaml views
 
-![Chart](README/screenshot3.png)
+![Chart](cards/LoadUnload.png)
 ```
 type: custom:apexcharts-card
 graph_span: 24h
