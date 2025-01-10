@@ -79,7 +79,7 @@ blueprint:
             - input_number
     update_interval:
       name: Update interval
-      description: Time to wait before accepting new data fron the grid sensor
+      description: Time to wait before accepting new data from the grid sensor
       selector:
         duration:
 
