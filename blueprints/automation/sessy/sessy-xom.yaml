@@ -218,7 +218,8 @@ action:
 
               {% for i in range(0,battery_count) %}
                 {% if batteries.available | count < num_optimal 
-                and states(battery_strategy_entity[i]) == "api" 
+                and states(battery_strategy_entity[i]) == "api"
+                and (states(battery_state_entity[i]) != "error"
                 and (states(battery_soc_entity[i]) | int >= min_battery_level or setpoint < 0)
                 and (states(battery_state_entity[i]) != "battery_empty" or setpoint < 0)
                 and (states(battery_soc_entity[i]) | int <= max_battery_level or setpoint > 0) 
