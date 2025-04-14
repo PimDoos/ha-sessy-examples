@@ -33,6 +33,8 @@ series:
     yaxis_id: power
     name: Power Schedule
     type: column
+    show:
+      in_header: raw
     data_generator: |
       let hours = [];
       for(var i = 0; i < 24; i++){ hours.push(i); }
@@ -46,6 +48,8 @@ series:
     yaxis_id: price
     name: Energy Price
     curve: stepline
+    show:
+      in_header: raw
     float_precision: 5
     data_generator: |
       let hours = [];
@@ -64,8 +68,7 @@ type: custom:apexcharts-card
 header:
   show: true
   title: Tomorrow
-  show_states: true
-  colorize_states: true
+  show_states: false
 span:
   start: day
   offset: +1d
