@@ -8,9 +8,8 @@ Controls Sessy to maintain value X on the grid meter.
 - Some attention points:
   - Make sure you don't have any helper entities with `_power_strategy`, `_power_setpoint`, `_state_of_charge` or `_system_state` in the name
   - `Update Interval` needs to be slower than the grid connection sensor update interval.
-  - A reasonable `timeout` value is 5 seconds
-  - `Smoothing` default of 100 is a good starting point. This is the maximum step adjustment. When your sensor updates more frequent you should lower the smoothing value. A large value may result in instable control 
-  - Your net grid consumption sensor needs to have the unit Watt
+  - `Smoothing` default of 100 to 1000 is a good starting point. This is the maximum step adjustment. When your sensor updates more frequent you should lower the smoothing value. A large value may result in instable control 
+  - Your net grid consumption sensor needs to have the unit Watt or kW
 
 [![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FPimDoos%2Fha-sessy-examples%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fsessy%2Fsessy-xom.yaml)
 
