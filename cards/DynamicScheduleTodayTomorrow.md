@@ -13,7 +13,7 @@ Since ha-sessy 0.6.0 and Sessy firmware 1.6.5, Sessy's dynamic schedule and ener
 type: custom:apexcharts-card
 header:
   show: true
-  title: Sessy
+  title: Sessy schedule
   show_states: true
   colorize_states: true
 now:
@@ -46,8 +46,12 @@ series:
       let points = [];
       for(var i = 0; i < 48; i++){
         let date = moment(today).add(i, 'hours')
-        
-        points.push([date, entity.attributes[date.format("YYYY-MM-DD")][date.hours()]])
+        let value = null;
+        if(entity.attributes.hasOwnProperty(date.format("YYYY-MM-DD")))
+        {
+          value = entity.attributes[date.format("YYYY-MM-DD")][date.hours()]
+        }
+        points.push([date, value])
       }
       return points;
   - entity: sensor.sessy_XXXX_energy_price
@@ -62,8 +66,13 @@ series:
       let points = [];
       for(var i = 0; i < 48; i++){
         let date = moment(today).add(i, 'hours')
-        
-        points.push([date, entity.attributes[date.format("YYYY-MM-DD")][date.hours()]])
+        let value = null;
+        if(entity.attributes.hasOwnProperty(date.format("YYYY-MM-DD")))
+        {
+          value = entity.attributes[date.format("YYYY-MM-DD")][date.hours()]
+        }
+        points.push([date, value])
       }
       return points;
+
 ```
