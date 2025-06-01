@@ -1,6 +1,6 @@
 blueprint:
   name: Sessy Full Discharge
-  description: Discharge a Sessy until it's empty
+  description: Discharge a Sessy until it is empty
   author: PimDoos
   domain: script
   source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/script/sessy/sessy-full-discharge.yaml
@@ -32,11 +32,25 @@ blueprint:
           mode: box
           min: 50.0
           step: 1.0
+    discharge_entity:
+      name: Charge power setpoint entity
+      description: Entity that controls the charging setpoint. Overrides the hard input above. Negative value is discharging
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+          - domain:
+            - sensor
+            - number
+            - input_number
+      
     discharge_timeout:
       name: Discharge timeout
-      description: Maximum time before resuming normal operation
+      description: Maximum time before stopping this script, ignoring the SoC setting.
       selector:
         duration: {}
+      default: "1:00:00"
     start_action:
       name: Start action
       description: Series of actions to execute before starting discharging
@@ -69,15 +83,22 @@ sequence:
     device_ids: !input battery_device
     default_battery_soc_min: !input battery_soc_min
     default_discharge_power: !input discharge_power
+    discharge_entity: !input discharge_entity
+
 - variables:
     battery_soc_min: '{{ default_battery_soc_min if not battery_soc_min is defined
       else battery_soc_min }}
-
       '
-    discharge_power: '{{ default_discharge_power if not discharge_power is defined else discharge_power
+    discharge_power_hard: '{{ default_discharge_power if not discharge_power is defined else discharge_power
       }}
+      '
+    discharge_entity: '{% if discharge_entity is string %}{% set discharge_entity = [discharge_entity]
+      %}{% endif %} {% set discharge_entity = discharge_entity | map("states") | map("int")
+      | sum %} {{ -1*discharge_entity }}
 
       '
+    discharge_power: '{{ discharge_power_hard if not discharge_entity is defined else discharge_entity }}
+    '
 - variables:
     device_ids: '{% if device_ids is string %}{% set device_ids = [ device_ids ] %}{%
       endif %}
