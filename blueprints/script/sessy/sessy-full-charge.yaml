@@ -1,6 +1,6 @@
 blueprint:
   name: Sessy Full Charge
-  description: Charge a Sessy until it's full
+  description: Charge a Sessy until it is full
   author: PimDoos
   domain: script
   source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/script/sessy/sessy-full-charge.yaml
