@@ -158,7 +158,7 @@ sequence:
   wait_for_trigger:
   - platform: template
     value_template: |
-      {{ (battery_soc_entity | map("states") | map("int") | list) | min < battery_soc_min }}
+      {{ (battery_soc_entity | map("states") | map("int") | list) | max < battery_soc_min }}
 
   - platform: template
     value_template: |
