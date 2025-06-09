@@ -79,90 +79,90 @@ blueprint:
 mode: restart
 icon: mdi:battery-arrow-up
 sequence:
-- variables:
-    device_ids: !input battery_device
-    default_battery_soc_max: !input battery_soc_max
-    default_charge_power: !input charge_power
-    charge_entity: !input charge_entity
-    
-- variables:
-    battery_soc_max: |
-    {{ default_battery_soc_max if not battery_soc_max is defined
-      else battery_soc_max }}
-    charge_power_hard: {{ default_charge_power if not charge_power is defined else charge_power }}
-    charge_entity: |
-      {% if charge_entity is string %}
-        {% set charge_entity = [charge_entity] %}
-      {% endif %} 
-      {% set charge_entity = charge_entity | map("states") | map("int") | sum %} {{ charge_entity }}
-    charge_power: |
-      {{ charge_power_hard if not charge_entity is defined else charge_entity }}
-- variables:
-    device_ids: |
-        {% if device_ids is string %}{% set device_ids = [ device_ids ] %}{% endif %}
-        {{ device_ids }}
-    battery_count: |
-        {{ device_ids | count }}
-    power_setpoint: |
-        {{ (charge_power | int * -1) / battery_count }}
-    # Get Entity IDs from device IDs
-    battery_strategy_entity: |
-      {% set entities = namespace(strategy=[]) %}
-      {% for device_id in device_ids %}
-      {% set entities.strategy = entities.strategy + [device_entities(device_id) | list | select("search","_power_strategy$") | list | join("")] %}
-      {% endfor %}
-      {{ entities.strategy }}
-    battery_setpoint_entity: |
-      {% set entities = namespace(setpoint=[]) %}
-      {% for device_id in device_ids %}
-      {% set entities.setpoint = entities.setpoint + [device_entities(device_id) | list | select("search","_power_setpoint$") | list | join("")] %}
-      {% endfor %}
-      {{ entities.setpoint }}
-    battery_soc_entity: |
-      {% set entities = namespace(soc=[]) %}
-      {% for device_id in device_ids %}
-      {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_state_of_charge$") | list | join("")] %}
-      {% endfor %}
-      {{ entities.soc }}
-    battery_state_entity: |
-      {% set entities = namespace(state=[]) %}
-      {% for device_id in device_ids %}
-      {% set entities.state = entities.state + [device_entities(device_id) | list | select("search","_system_state$") | list | join("")] %}
-      {% endfor %}
-      {{ entities.state }}
-- parallel: !input start_action
-- service: select.select_option
-  data:
-    option: api
-  target:
-    entity_id: |
+  - variables:
+      device_ids: !input battery_device
+      default_battery_soc_max: !input battery_soc_max
+      default_charge_power: !input charge_power
+      charge_entity: !input charge_entity
+      
+  - variables:
+      battery_soc_max: |
+      {{ default_battery_soc_max if not battery_soc_max is defined
+        else battery_soc_max }}
+      charge_power_hard: {{ default_charge_power if not charge_power is defined else charge_power }}
+      charge_entity: |
+        {% if charge_entity is string %}
+          {% set charge_entity = [charge_entity] %}
+        {% endif %} 
+        {% set charge_entity = charge_entity | map("states") | map("int") | sum %} {{ charge_entity }}
+      charge_power: |
+        {{ charge_power_hard if not charge_entity is defined else charge_entity }}
+  - variables:
+      device_ids: |
+          {% if device_ids is string %}{% set device_ids = [ device_ids ] %}{% endif %}
+          {{ device_ids }}
+      battery_count: |
+          {{ device_ids | count }}
+      power_setpoint: |
+          {{ (charge_power | int * -1) / battery_count }}
+      # Get Entity IDs from device IDs
+      battery_strategy_entity: |
+        {% set entities = namespace(strategy=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.strategy = entities.strategy + [device_entities(device_id) | list | select("search","_power_strategy$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.strategy }}
+      battery_setpoint_entity: |
+        {% set entities = namespace(setpoint=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.setpoint = entities.setpoint + [device_entities(device_id) | list | select("search","_power_setpoint$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.setpoint }}
+      battery_soc_entity: |
+        {% set entities = namespace(soc=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_state_of_charge$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.soc }}
+      battery_state_entity: |
+        {% set entities = namespace(state=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.state = entities.state + [device_entities(device_id) | list | select("search","_system_state$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.state }}
+  - parallel: !input start_action
+  - service: select.select_option
+    data:
+      option: api
+    target:
+      entity_id: |
+          {{ battery_strategy_entity }}
+  - service: number.set_value
+    data:
+      value: |
+        {{ power_setpoint }}
+    target:
+      entity_id: |
+        {{ battery_setpoint_entity }}
+  - timeout: !input charge_timeout
+    wait_for_trigger:
+    - platform: template
+      value_template: |
+        {{ (battery_soc_entity | map("states") | map("int") | list) |  min > battery_soc_max }}
+    - platform: template
+      value_template: |
+        {% set battery_state = battery_state_entity | map("states") | list %}
+        {{ battery_state[0] == "battery_full" and battery_state | unique | list | length == 1 }}
+  - service: number.set_value
+    data:
+      value: 0
+    target:
+      entity_id: |
+        {{ battery_setpoint_entity }}
+  - service: select.select_option
+    data:
+      option: !input end_strategy
+    target:
+      entity_id: |
         {{ battery_strategy_entity }}
-- service: number.set_value
-  data:
-    value: |
-      {{ power_setpoint }}
-  target:
-    entity_id: |
-      {{ battery_setpoint_entity }}
-- timeout: !input charge_timeout
-  wait_for_trigger:
-  - platform: template
-    value_template: |
-      {{ (battery_soc_entity | map("states") | map("int") | list) |  min > battery_soc_max }}
-  - platform: template
-    value_template: |
-      {% set battery_state = battery_state_entity | map("states") | list %}
-      {{ battery_state[0] == "battery_full" and battery_state | unique | list | length == 1 }}
-- service: number.set_value
-  data:
-    value: 0
-  target:
-    entity_id: |
-      {{ battery_setpoint_entity }}
-- service: select.select_option
-  data:
-    option: !input end_strategy
-  target:
-    entity_id: |
-      {{ battery_strategy_entity }}
-- parallel: !input end_action
+  - parallel: !input end_action
