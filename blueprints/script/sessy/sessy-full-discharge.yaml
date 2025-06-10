@@ -109,7 +109,7 @@ sequence:
       battery_count: |
         {{ device_ids | count }}
       power_setpoint: |
-        {{ (charge_power | int * -1) / battery_count }}
+        {{ (discharge_power | int ) / battery_count }}
 
       # Get Entity IDs from device IDs
       battery_strategy_entity: |
