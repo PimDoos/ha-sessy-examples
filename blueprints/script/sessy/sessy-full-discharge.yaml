@@ -92,7 +92,7 @@ sequence:
     battery_soc_min: |
       {{ default_battery_soc_min if not battery_soc_min is defined else battery_soc_min }}
     discharge_power_hard: |
-      '{{ default_discharge_power if not discharge_power is defined else discharge_power }}
+      {{ default_discharge_power if not discharge_power is defined else discharge_power }}
     discharge_entity: |
       {% if discharge_entity is string %}
         {% set discharge_entity = [discharge_entity] %}
