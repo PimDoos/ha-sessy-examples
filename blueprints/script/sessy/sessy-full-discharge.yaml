@@ -1,0 +1,182 @@
+blueprint:
+  name: Sessy Full Discharge
+  description: Discharge a Sessy until it's full
+  author: PimDoos
+  domain: script
+  source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/script/sessy/sessy-full-discharge.yaml
+  input:
+    battery_device:
+      name: Battery
+      description: Sessy Battery devices to discharge
+      selector:
+        device:
+          integration: sessy
+          multiple: true
+    battery_soc_min:
+      name: Minimum State of Charge
+      description: Discharge down to this percentage
+      default: 10
+      selector:
+        number:
+          min: 1.0
+          max: 100.0
+          step: 1.0
+          mode: slider
+    discharge_power:
+      name: Discharge power
+      description: Total discharge power (W). If multiple batteries are specified, this value will be shared equally among batteries.
+      default: 2000
+      selector:
+        number:
+          mode: box
+          min: 50.0
+          step: 1.0
+    discharge_entity:
+      name: Charge power setpoint entity
+      description: Entity that controls the charging setpoint. Overrides the hard input above. Negative value is discharging
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+          - domain:
+            - sensor
+            - number
+            - input_number
+      
+    discharge_timeout:
+      name: Discharge timeout
+      description: Maximum time before stopping this script, ignoring the SoC setting.
+      selector:
+        duration: {}
+      default: "1:00:00"
+    start_action:
+      name: Start action
+      description: Series of actions to execute before starting discharging
+      default: []
+      selector:
+        action: {}
+
+    end_action:
+      name: End action
+      description: Series of actions to execute after discharging finishes
+      default: []
+      selector:
+        action: {}
+        
+    end_strategy:
+      name: End strategy
+      description: Which strategy to activate after full discharge is complete
+      selector:
+        select:
+          options:
+          - idle
+          - nom
+          - roi
+          - api
+          multiple: false
+          sort: false
+          custom_value: false
+mode: restart
+icon: mdi:battery-arrow-up
+
+
+sequence:
+- variables:
+    device_ids: !input battery_device
+    default_battery_soc_min: !input battery_soc_min
+    default_discharge_power: !input discharge_power
+    discharge_entity: !input discharge_entity
+
+- variables:
+    battery_soc_min: |
+      {{ default_battery_soc_min if not battery_soc_min is defined else battery_soc_min }}
+    discharge_power_hard: |
+      '{{ default_discharge_power if not discharge_power is defined else discharge_power }}
+    discharge_entity: |
+      {% if discharge_entity is string %}
+        {% set discharge_entity = [discharge_entity] %}
+      {% endif %}
+      {% set discharge_entity = discharge_entity | map("states") | map("int") | sum %} {{ -1*discharge_entity }}
+
+    discharge_power: |
+      {{ discharge_power_hard if not discharge_entity is defined else discharge_entity }}
+
+- variables:
+      device_ids: |
+        {% if device_ids is string %}{% set device_ids = [ device_ids ] %}{% endif %}
+        {{ device_ids }}
+      battery_count: |
+        {{ device_ids | count }}
+      power_setpoint: |
+        {{ (discharge_power | int ) / battery_count }}
+
+      # Get Entity IDs from device IDs
+      battery_strategy_entity: |
+        {% set entities = namespace(strategy=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.strategy = entities.strategy + [device_entities(device_id) | list | select("search","_power_strategy$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.strategy }}
+      battery_setpoint_entity: |
+        {% set entities = namespace(setpoint=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.setpoint = entities.setpoint + [device_entities(device_id) | list | select("search","_power_setpoint$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.setpoint }}
+      battery_soc_entity: |
+        {% set entities = namespace(soc=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_state_of_charge$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.soc }}
+      battery_state_entity: |
+        {% set entities = namespace(state=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.state = entities.state + [device_entities(device_id) | list | select("search","_system_state$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.state }}
+
+- parallel: !input start_action
+
+- service: select.select_option
+  data:
+    option: api
+  target:
+    entity_id: |
+      {{ battery_strategy_entity }}
+
+- service: number.set_value
+  data:
+    value: |
+      {{ power_setpoint }}
+  target:
+    entity_id: |
+      {{ battery_setpoint_entity }}
+
+- timeout: !input discharge_timeout
+  wait_for_trigger:
+  - platform: template
+    value_template: |
+      {{ (battery_soc_entity | map("states") | map("int") | list) | max < battery_soc_min }}
+
+  - platform: template
+    value_template: |
+      {% set battery_state = battery_state_entity | map("states") | list %}
+      {{ battery_state[0] == "battery_empty" and battery_state | unique | list | length == 1 }}
+
+- service: number.set_value
+  data:
+    value: 0
+  target:
+    entity_id: |
+      {{ battery_setpoint_entity }}
+
+- service: select.select_option
+  data:
+    option: !input end_strategy
+  target:
+    entity_id: |
+      {{ battery_strategy_entity }}
+
+- parallel: !input end_action

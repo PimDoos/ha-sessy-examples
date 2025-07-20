@@ -6,47 +6,64 @@ blueprint:
   source_url: https://github.com/PimDoos/ha-sessy-examples/blob/main/blueprints/script/sessy/sessy-full-charge.yaml
   input:
     battery_device:
-        name: Battery
-        description: Sessy Battery devices to charge
-        selector:
-          device:
-            integration: sessy
-            multiple: true
+      name: Battery
+      description: Sessy Battery devices to charge
+      selector:
+        device:
+          integration: sessy
+          multiple: true
     battery_soc_max:
       name: Maximum State of Charge
       description: Charge up to this percentage
       default: 100
       selector:
         number:
-          min: 1
-          max: 100
+          min: 1.0
+          max: 100.0
+          step: 1.0
+          mode: slider
     charge_power:
       name: Charge power
-      description: Total charge power (W). If multiple batteries are specified, this value will be shared equally among batteries.
+      description: Total charge power (W). If multiple batteries are specified, this
+        value will be shared equally among batteries.
       default: 2000
       selector:
         number:
           mode: box
-          min: 50
+          min: 50.0
+          step: 1.0
+    charge_entity:
+      name: Charge power setpoint entity
+      description: Entity that controls the charging setpoint. Overrides the hard input above
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+          - domain:
+            - sensor
+            - number
+            - input_number
+      
     charge_timeout:
       name: Charge timeout
-      description: Maximum time before resuming normal operation
+      description: Maximum time before stopping this script, ignoring the SoC setting.
       selector:
-        duration:
-
+        duration: {}
+      default: "1:00:00"
     start_action:
       name: Start action
       description: Series of actions to execute before starting charging
       default: []
       selector:
-        action:
-
+        action: {}
+        
     end_action:
       name: End action
       description: Series of actions to execute after charging finishes
       default: []
       selector:
-        action:
+        action: {}
 
     end_strategy:
       name: End strategy
@@ -54,12 +71,13 @@ blueprint:
       selector:
         select:
           options:
-            - idle
-            - nom
-            - roi
-            - api
-    
-
+          - idle
+          - nom
+          - roi
+          - api
+          multiple: false
+          sort: false
+          custom_value: false
 mode: restart
 icon: mdi:battery-arrow-up
 
@@ -69,13 +87,21 @@ sequence:
       device_ids: !input battery_device
       default_battery_soc_max: !input battery_soc_max
       default_charge_power: !input charge_power
-
+      charge_entity: !input charge_entity
+      
   - variables:
       battery_soc_max: |
         {{ default_battery_soc_max if not battery_soc_max is defined else battery_soc_max }}
-      charge_power: |
+      charge_power_hard: |
         {{ default_charge_power if not charge_power is defined else charge_power }}
- 
+      charge_entity: |
+        {% if charge_entity is string %}
+          {% set charge_entity = [charge_entity] %}
+        {% endif %} 
+        {% set charge_entity = charge_entity | map("states") | map("int")| sum %} {{ charge_entity }}
+      charge_power: |
+        {{ charge_power_hard if not charge_entity is defined else charge_entity }}
+
   - variables:
       device_ids: |
         {% if device_ids is string %}{% set device_ids = [ device_ids ] %}{% endif %}
@@ -84,7 +110,7 @@ sequence:
         {{ device_ids | count }}
       power_setpoint: |
         {{ (charge_power | int * -1) / battery_count }}
-      
+
       # Get Entity IDs from device IDs
       battery_strategy_entity: |
         {% set entities = namespace(strategy=[]) %}
@@ -130,14 +156,14 @@ sequence:
 
   - timeout: !input charge_timeout
     wait_for_trigger:
-      - platform: template
-        value_template: |
-          {{ (battery_soc_entity | map("states") | map("int") | list) | min > battery_soc_max }}
+    - platform: template
+      value_template: |
+        {{ (battery_soc_entity | map("states") | map("int") | list) | min > battery_soc_max }}
 
-      - platform: template
-        value_template: |
-          {% set battery_state = battery_state_entity | map("states") | list %}
-          {{ battery_state[0] == "battery_full" and battery_state | unique | list | length == 1 }}
+    - platform: template
+      value_template: |
+        {% set battery_state = battery_state_entity | map("states") | list %}
+        {{ battery_state[0] == "battery_full" and battery_state | unique | list | length == 1 }}
 
   - service: number.set_value
     data:
@@ -145,7 +171,7 @@ sequence:
     target:
       entity_id: |
         {{ battery_setpoint_entity }}
-  
+
   - service: select.select_option
     data:
       option: !input end_strategy
