@@ -10,7 +10,65 @@ For a graph with today and tomorrow in one chart, see [this page](DynamicSchedul
 # Card configuration
 **Note**: Replace 'sessy_XXXX' in the examples below with the name of your own Sessy.
 
-## Today
+## DynamicSchedule V2
+
+Applicable to Sessy with firmware 1.10.0 or higher and HA-Sessy 0.9.0 or higher. Shows all dynamic schedule data in one graph.
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Today
+  show_states: true
+  colorize_states: true
+now:
+  show: true
+graph_span: 2d
+span:
+  start: day
+yaxis:
+  - id: power
+    decimals: 0
+    opposite: true
+  - id: price
+    decimals: 2
+series:
+  - entity: sensor.sessy_XXXX_power_schedule
+    yaxis_id: power
+    name: Power Schedule
+    type: column
+    show:
+      in_header: raw
+    data_generator: |
+      var data = [];
+      for (let i in entity.attributes.dynamic_schedule){
+        data.push([i, entity.attributes.dynamic_schedule[i]]);
+      }
+      return data;
+
+  - entity: sensor.sessy_XXXX_energy_price
+    yaxis_id: price
+    name: Energy Price
+    curve: stepline
+    show:
+      in_header: raw
+    float_precision: 5
+    data_generator: |
+      var data = [];
+      for (let i in entity.attributes.energy_prices){
+        data.push([i, entity.attributes.energy_prices[i]]);
+      }
+      return data;
+
+```
+
+
+
+## Dynamic Schedule v1
+For HA-Sessy 0.8.6 and older, Sessy firmware 1.9.1 and older.
+
+### Today
+
 ```yaml
 type: custom:apexcharts-card
 header:
@@ -62,7 +120,7 @@ series:
       });
 ```
 
-## Tomorrow
+### Tomorrow
 ```yaml
 type: custom:apexcharts-card
 header:
