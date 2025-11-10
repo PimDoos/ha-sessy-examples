@@ -58,14 +58,23 @@ blueprint:
           min: -12000
           max: 12000
           mode: box
-    setpoint_target_value:
-      name: Target value
-      description: Target value (X) for the Grid entity
-      default: 0
+    setpoint_target_min:
+      name: Target minimum value
+      description: Lower limit for the Grid target band (in Watts)
+      default: -200
       selector:
         number:
-          min: -3600
-          max: 3600
+          min: -5000
+          max: 5000
+          mode: box
+    setpoint_target_max:
+      name: Target maximum value
+      description: Upper limit for the Grid target band (in Watts)
+      default: 200
+      selector:
+        number:
+          min: -5000
+          max: 5000
           mode: box
     offset_entity:
       name: Offset entities
@@ -198,10 +207,24 @@ action:
 
       # Calculate new setpoint
       setpoint: >
-        {% set load = battery + grid %}
-        {% set setpoint_target = load - offset %}
-        {% set setpoint_smooth = [[setpoint_target, battery - smoothing, min_setpoint] | max, battery + smoothing, max_setpoint] | min %}
-        {{ setpoint_smooth }}
+        {% set net_load = battery + grid %}
+        {% if net_load < target_min %}
+          {# te veel export -> laad batterij #}
+          {% set target_diff = (net_load - offset_total ) - target_min %}
+        {% elif net_load > target_max %}
+          {# te veel import -> ontlaad batterij #}
+          {% set target_diff = (net_load - offset_total) - target_max %}
+        {% else %}
+          {% set target_diff = 0 - offset_total%}
+        {% endif %}
+
+        {% if target_diff != 0%}
+            {% set lower = [target_diff, battery - smoothing, min_setpoint] | max %}
+            {% set setpoint_smooth = [lower, battery + smoothing, max_setpoint] | min %}
+            {{ setpoint_smooth }}
+        {% else %}
+            {{ target_diff }}
+        {% endif %}
 
   - variables:
       # Distribute setpoint across batteries
