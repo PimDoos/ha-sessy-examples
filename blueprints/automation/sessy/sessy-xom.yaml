@@ -62,7 +62,7 @@ blueprint:
       name: Lower threshold power setpoint
       description: Minimum charge or discharge power (absolute value). Setpoints 
         between -X and X will be set to 0.
-      default: 200
+      default: 0
       selector:
         number:
           min: 0.0
