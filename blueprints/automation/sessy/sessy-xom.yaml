@@ -237,7 +237,7 @@ action:
         {% for i in batteries.available %}
           {% set value = (setpoint / (batteries.available | count)) | int %}
           {% set value = [[value,-2200] | max, 2200] | min %}
-          {% if abs(value) < lower_deadband %}{% set value = 0 %}{% endif %}
+          {% if (value | abs) < lower_deadband %}{% set value = 0 %}{% endif %}
           {% set batteries.entities = batteries.entities + [{"setpoint":battery_setpoint_entity[i], "strategy": battery_strategy_entity[i], "value":value}] %}
 
         {% endfor %}
