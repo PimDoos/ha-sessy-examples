@@ -47,8 +47,6 @@ blueprint:
           default: "{{ now().timetuple().tm_yday }}"
           selector:
             template:
-            
-
 
     power_section:
       name: Power
@@ -169,9 +167,6 @@ blueprint:
             duration: {}
 
 
-
-
-
 variables:
   # Battery selection
   device_ids: !input battery_device
@@ -200,9 +195,6 @@ variables:
   #Script
   smoothing: !input setpoint_smoothing_value 
   
-
-
-
 
 trigger:
   - trigger: state
@@ -268,10 +260,12 @@ action:
         {{ battery_setpoint_entity | map("states") | list | map('int') | sum }}
 
       # Calculate offset
-      offset: >
-        {% if offset_entity is string %}{% set offset_entity = [offset_entity] %}{% endif %}
-        {% set offset = offset + offset_entity | map("states") | map("int") | sum %}
-        {{ offset }}
+      offset_total: >
+        {{ (offset_entity if offset_entity is iterable else [offset_entity] | default([])) 
+         | map('states') 
+         | map('int', 0) 
+         | sum }}
+
 
       # Calculate new setpoint
       setpoint: >
@@ -327,6 +321,7 @@ action:
           {% set batteries.entities = batteries.entities + [{"setpoint":battery_setpoint_entity[i], "strategy": battery_strategy_entity[i], "value":0}] %}
         {% endfor %}
         {{ batteries.entities }}
+
 
   - repeat:
       for_each: |
