@@ -79,7 +79,7 @@ blueprint:
               max: 2200      
               
         setpoint_min:
-          name: Maximum charging
+          name: Total maximum charging power 
           description: If this is 0, charging is disabled. Total setpoint for all batteries combined.
           default: 12000
           selector:
@@ -88,7 +88,7 @@ blueprint:
               max: 12000
               mode: box
         setpoint_max:
-          name: Maximum discharging
+          name: Total maximum discharging power 
           description: If this is 0, discharging is disabled. Total setpoint for all batteries combined. 
           default: 12000
           selector:
