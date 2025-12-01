@@ -2,145 +2,184 @@ mode: single
 max_exceeded: silent
 
 blueprint:
-  name: Sessy X on the Meter
+  name: Sessy X range on the Meter
   description: Control a Sessy Battery according to a grid sensor
-  author: PimDoos
+  author: PimDoos & Tazzios
   domain: automation
   input:
-    grid_entity:
-      name: Grid
-      description: Entity measuring grid net consumption
-      selector:
-        entity:
-          filter:
-            domain: sensor
-            device_class: power
-    battery_device:
-      name: Battery
-      description: Sessy Battery devices to control
-      selector:
-        device:
-          filter:
-            integration: sessy
-          multiple: true
+    battery_section:
+      name: Battery selection
+      icon: mdi:battery
+      input:
+        battery_device:
+          name: Battery
+          description: Sessy Battery devices to control
+          selector:
+            device:
+              filter:
+                integration: sessy
+              multiple: true
+        battery_soc_min:
+          name: Minimum State of Charge
+          description: Batteries below this level will not participate in the load balancing pool
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 99
+        battery_soc_max:
+          name: Maximum State of Charge
+          description: Batteries above this level will not participate in the load balancing pool
+          default: 100
+          selector:
+            number:
+              min: 1
+              max: 100
 
-    setpoint_smoothing_value:
-      name: Smoothing value
-      description: Maximum delta between two setpoints. This should not be lower than the Minimum Power of the battery.
-      default: 100
-      selector:
-        number:
-          min: 50
-          max: 2000
-    setpoint_optimal_value:
-      name: Max optimal power
-      description: Amount of power required before loadbalancing to more batteries
-      default: 1200
-      selector:
-        number:
-          min: 50
-          max: 2200
-    setpoint_min:
-      name: Minimum power setpoint
-      description: Minimum total setpoint for all batteries combined. If this is 0 or higher, charging is disabled.
-      default: -12000
-      selector:
-        number:
-          min: -12000
-          max: 12000
-          mode: box
-    setpoint_max:
-      name: Maximum power setpoint
-      description: Minimum total setpoint for all batteries combined. If this is 0 or lower, discharging is disabled.
-      default: 12000
-      selector:
-        number:
-          min: -12000
-          max: 12000
-          mode: box
-    setpoint_target_min:
-      name: Target minimum value
-      description: Lower limit for the Grid target band (in Watts)
-      default: -200
-      selector:
-        number:
-          min: -5000
-          max: 5000
-          mode: box
-    setpoint_target_max:
-      name: Target maximum value
-      description: Upper limit for the Grid target band (in Watts)
-      default: 200
-      selector:
-        number:
-          min: -5000
-          max: 5000
-          mode: box
-    offset_entity:
-      name: Offset entities
-      description: Entities whose value (in Watts) should be subtracted from the grid sensor. E.g. Car charger power sensor
-      default: []
-      selector:
-        entity:
-          multiple: true
-          filter:
-            domain:
-              - sensor
-              - number
-              - input_number
-    update_interval:
-      name: Update interval
-      description: Time to wait before accepting new data from the grid sensor
-      selector:
-        duration:
+    rotation_section:
+      name: Battery rotation
+      description: Rotate multiple batteries 
+      icon: mdi:rotate-3d-variant
+      input:
+        priority_offset_template:
+          name: Priority offset template
+          description: Template defining a value to rotate battery priority by. Values higher than the number of batteries will loop back to 0.
+          default: "{{ now().timetuple().tm_yday }}"
+          selector:
+            template:
+            
 
-    update_timeout:
-      name: Update timeout
-      description: Maximum time to wait for new data from the grid sensor
-      selector:
-        duration:
 
-    battery_soc_min:
-      name: Minimum State of Charge
-      description: Batteries below this level will not participate in the load balancing pool
-      default: 0
-      selector:
-        number:
-          min: 0
-          max: 99
-    battery_soc_max:
-      name: Maximum State of Charge
-      description: Batteries above this level will not participate in the load balancing pool
-      default: 100
-      selector:
-        number:
-          min: 1
-          max: 100
+    power_section:
+      name: Power
+      description: Power settings  
+      icon: mdi:flash
+      input:
+        setpoint_optimal_value:
+          name: Max optimal power
+          description: Amount of power required before loadbalancing to more batteries
+          default: 1200
+          selector:
+            number:
+              min: 50
+              max: 2200
+        setpoint_min:
+          name: Minimum power setpoint
+          description: Minimum total setpoint for all batteries combined. If this is 0 charging is disabled.
+          default: -12000
+          selector:
+            number:
+              min: -12000
+              max: 0
+              mode: box
+        setpoint_max:
+          name: Maximum power setpoint
+          description: Minimum total setpoint for all batteries combined. If this is 0 discharging is disabled.
+          default: 12000
+          selector:
+            number:
+              min: 0
+              max: 12000
+              mode: box
 
-    priority_offset_template:
-      name: Priority offset template
-      description: Template defining a value to rotate battery priority by. Values higher than the number of batteries will loop back to 0.
-      default: "{{ now().day }}"
-      selector:
-        template:
+    target_section:
+      name: Target
+      icon: mdi:target
+      input:
+        grid_entity:
+          name: Grid
+          description: Entity measuring grid net consumption
+          selector:
+            entity:
+              filter:
+                domain: sensor
+                device_class: power       
+        offset_entity:
+          name: Offset entities
+          description: Entities whose value (in Watts) should be subtracted from the grid sensor. E.g. Car charger power sensor
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                domain:
+                  - sensor
+                  - number
+                  - input_number
+
+    setpoint_section:
+      name: Setpoint
+      description: Set min and max the same if you want a fixed target.  
+      icon: mdi:flash   
+      input:
+        setpoint_target_min:
+          name: Target minimum value
+          description: Lower limit for the Grid target band (in Watts)
+          default: -200
+          selector:
+            number:
+              min: -5000
+              max: 10000
+              mode: box
+        setpoint_target_max:
+          name: Target maximum value
+          description: Upper limit for the Grid target band (in Watts)
+          default: 200
+          selector:
+            number:
+              min: -5000
+              max: 10000
+              mode: box
+
+    script_section:
+      name: Script
+      icon: mdi:tune                  
+      input:
+        setpoint_smoothing_value:
+          name: Smoothing value
+          description: Maximum delta between two setpoints. This should not be lower than the Minimum Power of the battery.
+          default: 100
+          selector:
+            number:
+              min: 50
+              max: 2000
+        update_interval:
+          name: Update interval
+          description: Time to wait before accepting new data from the grid sensor
+          default:
+            seconds: 10
+          selector:
+            duration: {}
+
+
+
+
 
 variables:
+  # Battery selection
   device_ids: !input battery_device
+  min_battery_level: !input battery_soc_min
+  max_battery_level: !input battery_soc_max
+  
+  # Power 
   optimal_max_power: !input setpoint_optimal_value
+  min_setpoint: !input setpoint_min
+  max_setpoint: !input setpoint_max
+  
+  # Target
   grid_entity: !input grid_entity
-  smoothing: !input setpoint_smoothing_value
+  offset_entity: !input offset_entity
 
+  # setpoint
   target_min: !input setpoint_target_min
   target_max: !input setpoint_target_max
 
-  #offset: !input setpoint_target_value
+  #Script
+  smoothing: !input setpoint_smoothing_value 
   
-  
-  offset_entity: !input offset_entity
-  min_battery_level: !input battery_soc_min
-  max_battery_level: !input battery_soc_max
-  min_setpoint: !input setpoint_min
-  max_setpoint: !input setpoint_max
+
+
+
 
 trigger:
   - trigger: state
