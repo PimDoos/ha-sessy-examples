@@ -1,0 +1,283 @@
+mode: single
+max_exceeded: silent
+
+blueprint:
+  name: Sessy X on the Meter
+  description: Control a Sessy Battery according to a grid sensor
+  author: PimDoos
+  domain: automation
+  input:
+    grid_entity:
+      name: Grid
+      description: Entity measuring grid net consumption
+      selector:
+        entity:
+          filter:
+            domain: sensor
+            device_class: power
+    battery_device:
+      name: Battery
+      description: Sessy Battery devices to control
+      selector:
+        device:
+          filter:
+            integration: sessy
+          multiple: true
+
+    setpoint_smoothing_value:
+      name: Smoothing value
+      description: Maximum delta between two setpoints. This should not be lower than the Minimum Power of the battery.
+      default: 100
+      selector:
+        number:
+          min: 50
+          max: 2000
+    setpoint_optimal_value:
+      name: Max optimal power
+      description: Amount of power required before loadbalancing to more batteries
+      default: 1200
+      selector:
+        number:
+          min: 50
+          max: 2200
+    setpoint_min:
+      name: Minimum power setpoint
+      description: Minimum total setpoint for all batteries combined. If this is 0 or higher, charging is disabled.
+      default: -12000
+      selector:
+        number:
+          min: -12000
+          max: 12000
+          mode: box
+    setpoint_max:
+      name: Maximum power setpoint
+      description: Minimum total setpoint for all batteries combined. If this is 0 or lower, discharging is disabled.
+      default: 12000
+      selector:
+        number:
+          min: -12000
+          max: 12000
+          mode: box
+    setpoint_target_min:
+      name: Target minimum value
+      description: Lower limit for the Grid target band (in Watts)
+      default: -200
+      selector:
+        number:
+          min: -5000
+          max: 5000
+          mode: box
+    setpoint_target_max:
+      name: Target maximum value
+      description: Upper limit for the Grid target band (in Watts)
+      default: 200
+      selector:
+        number:
+          min: -5000
+          max: 5000
+          mode: box
+    offset_entity:
+      name: Offset entities
+      description: Entities whose value (in Watts) should be subtracted from the grid sensor. E.g. Car charger power sensor
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - sensor
+              - number
+              - input_number
+    update_interval:
+      name: Update interval
+      description: Time to wait before accepting new data from the grid sensor
+      selector:
+        duration:
+
+    update_timeout:
+      name: Update timeout
+      description: Maximum time to wait for new data from the grid sensor
+      selector:
+        duration:
+
+    battery_soc_min:
+      name: Minimum State of Charge
+      description: Batteries below this level will not participate in the load balancing pool
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 99
+    battery_soc_max:
+      name: Maximum State of Charge
+      description: Batteries above this level will not participate in the load balancing pool
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+
+    priority_offset_template:
+      name: Priority offset template
+      description: Template defining a value to rotate battery priority by. Values higher than the number of batteries will loop back to 0.
+      default: "{{ now().day }}"
+      selector:
+        template:
+
+variables:
+  device_ids: !input battery_device
+  optimal_max_power: !input setpoint_optimal_value
+  grid_entity: !input grid_entity
+  smoothing: !input setpoint_smoothing_value
+
+  target_min: !input setpoint_target_min
+  target_max: !input setpoint_target_max
+
+  #offset: !input setpoint_target_value
+  
+  
+  offset_entity: !input offset_entity
+  min_battery_level: !input battery_soc_min
+  max_battery_level: !input battery_soc_max
+  min_setpoint: !input setpoint_min
+  max_setpoint: !input setpoint_max
+
+trigger:
+  - trigger: state
+    entity_id: !input grid_entity
+
+  - trigger: homeassistant
+    event: start
+
+action:
+  - variables:
+      device_ids: |
+        {% if device_ids is string %}{% set device_ids = [ device_ids ] %}{% endif %}
+        {{ device_ids }}
+      battery_count: |
+        {{ device_ids | count }}
+
+      priority_offset_template: !input priority_offset_template
+      priority_offset: |
+        {{ priority_offset_template % battery_count }}
+
+  - variables:
+      # Get Entity IDs from device IDs
+      battery_strategy_entity: |
+        {% set entities = namespace(strategy=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.strategy = entities.strategy + [device_entities(device_id) | list | select("search","_power_strategy$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.strategy[priority_offset:] + entities.strategy[:priority_offset] }}
+      battery_setpoint_entity: |
+        {% set entities = namespace(setpoint=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.setpoint = entities.setpoint + [device_entities(device_id) | list | select("search","_power_setpoint$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.setpoint[priority_offset:] + entities.setpoint[:priority_offset] }}
+      battery_soc_entity: |
+        {% set entities = namespace(soc=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_state_of_charge$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.soc[priority_offset:] + entities.soc[:priority_offset] }}
+      battery_state_entity: |
+        {% set entities = namespace(state=[]) %}
+        {% for device_id in device_ids %}
+        {% set entities.state = entities.state + [device_entities(device_id) | list | select("search","_system_state$") | list | join("")] %}
+        {% endfor %}
+        {{ entities.state[priority_offset:] + entities.state[:priority_offset] }}
+
+      # Get grid power and convert to Watts
+      grid: >
+        {% set multiplier = 0 %} 
+        {% set grid_unit = state_attr(grid_entity, "unit_of_measurement") %}
+        {% if grid_unit == "W" %}
+          {% set multiplier = 1 %}
+        {% elif grid_unit == "kW" %}
+          {% set multiplier = 1000 %}
+        {% endif %}
+        {% set grid_power = states(grid_entity) | float %}
+        {{ grid_power * multiplier }}
+
+  - variables:
+      # Calculate initial setpoint
+      battery: >
+        {{ battery_setpoint_entity | map("states") | list | map('int') | sum }}
+
+      # Calculate offset
+      offset: >
+        {% if offset_entity is string %}{% set offset_entity = [offset_entity] %}{% endif %}
+        {% set offset = offset + offset_entity | map("states") | map("int") | sum %}
+        {{ offset }}
+
+      # Calculate new setpoint
+      setpoint: >
+        {% set net_load = battery + grid %}
+        {% if net_load < target_min %}
+          {# te veel export -> laad batterij #}
+          {% set target_diff = (net_load - offset_total ) - target_min %}
+        {% elif net_load > target_max %}
+          {# te veel import -> ontlaad batterij #}
+          {% set target_diff = (net_load - offset_total) - target_max %}
+        {% else %}
+          {% set target_diff = 0 - offset_total%}
+        {% endif %}
+
+        {% if target_diff != 0%}
+            {% set lower = [target_diff, battery - smoothing, min_setpoint] | max %}
+            {% set setpoint_smooth = [lower, battery + smoothing, max_setpoint] | min %}
+            {{ setpoint_smooth }}
+        {% else %}
+            {{ target_diff }}
+        {% endif %}
+
+  - variables:
+      # Distribute setpoint across batteries
+      battery_setpoints: |
+        {% set num_optimal = ((setpoint | abs) / optimal_max_power) | round(0,'ceil') %}
+        {% set batteries = namespace(entities=[], available=[], standby=[]) %}
+
+        {% for i in range(0,battery_count) %}
+          {% if batteries.available | count < num_optimal 
+          and states(battery_strategy_entity[i]) == "api"
+          and states(battery_state_entity[i]) != "error"
+          and (states(battery_soc_entity[i]) | int >= min_battery_level or setpoint < 0)
+          and (states(battery_state_entity[i]) != "battery_empty" or setpoint < 0)
+          and (states(battery_soc_entity[i]) | int <= max_battery_level or setpoint > 0) 
+          and (states(battery_state_entity[i]) != "battery_full" or setpoint > 0) %}
+            {% set batteries.available = batteries.available + [i] %}
+          {% else %}
+            {% set batteries.standby = batteries.standby + [i] %}
+          {% endif %}
+          
+        {% endfor %}
+        {% for i in batteries.available %}
+          {% set value = (setpoint / (batteries.available | count)) | int %}
+          {% set value = [[value,-2200] | max, 2200] | min %}
+          {% set batteries.entities = batteries.entities + [{"setpoint":battery_setpoint_entity[i], "strategy": battery_strategy_entity[i], "value":value}] %}
+
+        {% endfor %}
+        {% for i in batteries.standby %}
+          {% set batteries.entities = batteries.entities + [{"setpoint":battery_setpoint_entity[i], "strategy": battery_strategy_entity[i], "value":0}] %}
+        {% endfor %}
+        {{ batteries.entities }}
+
+  - repeat:
+      for_each: |
+        {{ battery_setpoints }}
+      sequence:
+        - if:
+            - condition: template
+              value_template: |
+                {{ states(repeat.item.strategy) == "api" }}
+          then:
+            - action: number.set_value
+              continue_on_error: true
+              target:
+                entity_id: |
+                  {{ repeat.item.setpoint }}
+              data:
+                value: |
+                  {{ repeat.item.value | int }}
+  - delay: !input update_interval
