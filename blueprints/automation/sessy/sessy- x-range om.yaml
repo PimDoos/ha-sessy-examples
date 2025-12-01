@@ -55,7 +55,15 @@ blueprint:
       description: Power settings  
       icon: mdi:flash
       input:
-        setpoint_optimal_value:
+        battery_optimal_min:
+          name: Battery Minimum power
+          description: Minimum power to start a single battery with charge or discharge. 
+          default: 50
+          selector:
+            number:
+              min: 0
+              max: 2200
+        battery_optimal_balancing:
           name: Max optimal power
           description: Amount of power required before loadbalancing to more batteries
           default: 1200
@@ -63,18 +71,27 @@ blueprint:
             number:
               min: 50
               max: 2200
-        setpoint_min:
-          name: Minimum power setpoint
-          description: Minimum total setpoint for all batteries combined. If this is 0 charging is disabled.
-          default: -12000
+        battery_optimal_max:
+          name: Battery maximum power
+          description: Maximum  power that a single battery is allowed for charge or discharge.                                                                                     
+          default: 2200
           selector:
             number:
-              min: -12000
-              max: 0
+              min: 50
+              max: 2200      
+              
+        setpoint_min:
+          name: Maximum charging
+          description: If this is 0, charging is disabled. Total setpoint for all batteries combined.
+          default: 12000
+          selector:
+            number:
+              min: 0
+              max: 12000
               mode: box
         setpoint_max:
-          name: Maximum power setpoint
-          description: Minimum total setpoint for all batteries combined. If this is 0 discharging is disabled.
+          name: Maximum discharging
+          description: If this is 0, discharging is disabled. Total setpoint for all batteries combined. 
           default: 12000
           selector:
             number:
@@ -162,8 +179,14 @@ variables:
   max_battery_level: !input battery_soc_max
   
   # Power 
-  optimal_max_power: !input setpoint_optimal_value
-  min_setpoint: !input setpoint_min
+  min_battery_power: !input battery_optimal_min
+  balancing_battery_power: !input battery_optimal_balancing
+  max_battery_power: !input battery_optimal_max
+  # This makes 'min_setpoint' the opposite (negative) of the configured minimum setpoint.
+  # For example: if setpoint_min = 12000 → min_setpoint = -12000
+  setpoint_min: !input setpoint_min
+  min_setpoint: >
+    {{ 0 - (setpoint_min | float) }}
   max_setpoint: !input setpoint_max
   
   # Target
@@ -274,7 +297,7 @@ action:
   - variables:
       # Distribute setpoint across batteries
       battery_setpoints: |
-        {% set num_optimal = ((setpoint | abs) / optimal_max_power) | round(0,'ceil') %}
+        {% set num_optimal = ((setpoint | abs) / balancing_battery_power) | round(0,'ceil') %}
         {% set batteries = namespace(entities=[], available=[], standby=[]) %}
 
         {% for i in range(0,battery_count) %}
@@ -293,7 +316,10 @@ action:
         {% endfor %}
         {% for i in batteries.available %}
           {% set value = (setpoint / (batteries.available | count)) | int %}
-          {% set value = [[value,-2200] | max, 2200] | min %}
+          {% set value = [[value,-max_battery_power] | max, max_battery_power] | min %}
+          {% if value | abs < min_battery_power %}
+            {% set value = 0 %}
+          {% endif %}
           {% set batteries.entities = batteries.entities + [{"setpoint":battery_setpoint_entity[i], "strategy": battery_strategy_entity[i], "value":value}] %}
 
         {% endfor %}
