@@ -58,6 +58,17 @@ blueprint:
           min: -12000
           max: 12000
           mode: box
+    lower_deadband:
+      name: Lower threshold power setpoint
+      description: Minimum charge or discharge power (absolute value). Setpoints 
+        between -X and X will be set to 0.
+      default: 0
+      selector:
+        number:
+          min: 0.0
+          max: 1000.0
+          mode: box
+          step: 10
     setpoint_target_value:
       name: Target value
       description: Target value (X) for the Grid entity
@@ -126,7 +137,7 @@ variables:
   max_battery_level: !input battery_soc_max
   min_setpoint: !input setpoint_min
   max_setpoint: !input setpoint_max
-
+  lower_deadband: !input lower_deadband
 trigger:
   - trigger: state
     entity_id: !input grid_entity
@@ -226,6 +237,7 @@ action:
         {% for i in batteries.available %}
           {% set value = (setpoint / (batteries.available | count)) | int %}
           {% set value = [[value,-2200] | max, 2200] | min %}
+          {% if (value | abs) < lower_deadband %}{% set value = 0 %}{% endif %}
           {% set batteries.entities = batteries.entities + [{"setpoint":battery_setpoint_entity[i], "strategy": battery_strategy_entity[i], "value":value}] %}
 
         {% endfor %}
