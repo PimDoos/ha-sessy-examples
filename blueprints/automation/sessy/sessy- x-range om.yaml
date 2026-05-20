@@ -384,7 +384,7 @@ action:
         {% if sort_by_soc >= 5  %}
           {% set soc_map = namespace(list=[]) %}
           {% for dev in device_ids %}
-            {% set soc_entity = device_entities(dev) | select("search", "_state_of_charge$") | list %}
+            {% set soc_entity = device_entities(dev) | select("search", "_[a-z0-9]{4}_state_of_charge$") | list %}
             {% if soc_entity %}
               {% set soc_value = states(soc_entity[0]) | int %}
               {% if setpoint < 0 %}
