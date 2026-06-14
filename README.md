@@ -1,6 +1,29 @@
 # ha-sessy-examples
 Example automations for using Sessy with Home Assistant
 
+
+## Sessy X-range the meter (XOM) automation
+Extended version of the earlier blueprint (below) made by Tazzios.
+
+
+## Features
+- Dynamic load balancing across multiple batteries  
+- SOC-based inclusion/exclusion for optimal battery health  
+- Optional offsets for other power consumers (e.g., EV chargers)    
+- Keep SOC`s within x% of each other option to ensure equal usage over time or Rotates by priority template.  
+- Set grid target range, create a deadband.
+- Setpoint template, Do you not want to follow the grid and do something custom?   
+- Minimum and maximum power option.
+- Smooth transitions, minimum and maximum different in setpoint changes.
+- Smooth transitions, Smoothing factor above adjustable level.
+- Smooth transitions, seperate smoothing factor when passing zero.
+- Start condition, Set a start condition before the script is allowed to run
+- Stop action, When the start condition is not met do something else instead. 
+
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FPimDoos%2Fha-sessy-examples%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fsessy%2Fsessy-+x-range+om.yaml)
+ 
+[Documentation: settings overview](https://github.com/Tazzios/ha-marstek/blob/main/blueprints/Documentation.md)
+
 ## Sessy X-on the meter (XOM) automation
 Controls Sessy to maintain value X on the grid meter.
 - Load balancing across multiple Sessy's

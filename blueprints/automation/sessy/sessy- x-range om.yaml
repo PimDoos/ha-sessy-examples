@@ -6,28 +6,27 @@ blueprint:
   description: >
     Control a Sessy Battery according to a grid sensor
 
-    Version: 1.8
+    **Version: 2.0**
 
-    Breaking: smoothing is renamed to smoothing_max_watts
+    New: setpoint template  
 
-    New: minimum different in setpoint change
+    New: start condition
 
-    New: Smoothing factor above delta x
+    Improved: Blueprint setup reordered inputs and collapsed sections
 
-    New: Smoothing factor when passing zero
+    Improved: code, split max difference and absolute limit
 
-    New: sort by soc
-
-  author: PimDoos & Tazzios
+  author: Tazzios
   domain: automation
   input:
     battery_section:
       name: Battery selection
-      icon: mdi:battery
+      icon: mdi:battery-plus-variant
       input:
         battery_device:
-          name: Battery
-          description: Sessy Battery devices to control
+          name: Batteries
+          description: Batteries to control
+          default: null
           selector:
             device:
               filter:
@@ -35,34 +34,38 @@ blueprint:
               multiple: true
         battery_soc_min:
           name: Minimum State of Charge
-          description: Batteries below this level will not participate in the load balancing pool
+          description: Batteries below this level will not participate with discharging.
           default: 0
           selector:
             number:
               min: 0
-              max: 99
+              max: 50
+              unit_of_measurement: "%"
         battery_soc_max:
           name: Maximum State of Charge
-          description: Batteries above this level will not participate in the load balancing pool
+          description: Batteries above this level will not participate  with charging.
           default: 100
           selector:
             number:
-              min: 1
+              min: 50
               max: 100
+              unit_of_measurement: "%"
 
     rotation_section:
-      name: Battery rotation
-      description: Rotate multiple batteries
-      icon: mdi:rotate-3d-variant
+      name: Rotation method
+      description: ""
+      icon: mdi:rotate-right
+      collapsed: true
       input:
         sort_by_soc:
-          name: Order by State of Charge 
-          description: order the batteries by State of Charge. Below 5 means off, then the Priority offset template will be applied. 
+          name: Order by State of Charge
+          description: order the batteries by State of Charge and keep the SOC difference between set percentages. **Below 5 means off**, then the Priority offset template will be applied.
           default: 10
           selector:
             number:
               min: 1
               max: 50
+              unit_of_measurement: "%"
         priority_offset_template:
           name: Priority offset template
           description: Template defining a value to rotate battery priority by. Values higher than the number of batteries will loop back to 0.
@@ -70,68 +73,103 @@ blueprint:
           selector:
             template:
 
-
     power_section:
-      name: Power
-      description: Power settings
+      name: Power settings
+      description: ""
       icon: mdi:flash
+      collapsed: true
       input:
         battery_optimal_min:
           name: Battery Minimum power
-          description: Minimum power to start a single battery with charge or discharge.
-          default: 50
+          description: Minimum power for a single battery to start with charge or discharge.
+          default: 20
           selector:
             number:
               min: 0
               max: 2200
+              unit_of_measurement: "Watt"
         battery_optimal_balancing:
           name: Max optimal power
-          description: Amount of power required before loadbalancing to more batteries
-          default: 1200
+          description: Amount of power required before loadbalancing between batteries
+          default: 1600
           selector:
             number:
               min: 50
               max: 2200
+              unit_of_measurement: "Watt"
         battery_optimal_max:
           name: Battery maximum power
-          description: Maximum  power that a single battery is allowed for charge or discharge.
+          description: Maximum power that a single battery is allowed for charge or discharge.
           default: 2200
           selector:
             number:
               min: 50
               max: 2200
-
+              unit_of_measurement: "Watt"
+        # This value represents the minimum(aka charging) total setpoint for all batteries combined.
+        # It will be inverted later in the blueprint to calculate 'min_setpoint' for logic.
         setpoint_min:
-          name: Total maximum charging power
-          description: If this is 0, charging is disabled. Total setpoint for all batteries combined.
+          name: Maximum charging
+          description: Total charging power for all batteries combined. If this is 0, charging is disabled.
           default: 12000
           selector:
             number:
               min: 0
               max: 12000
               mode: box
+              unit_of_measurement: "Watt"
         setpoint_max:
-          name: Total maximum discharging power
-          description: If this is 0, discharging is disabled. Total setpoint for all batteries combined.
+          name: Maximum discharging
+          description: Total discharging power for all batteries combined.If this is 0, discharging is disabled.
           default: 12000
           selector:
             number:
               min: 0
               max: 12000
               mode: box
+              unit_of_measurement: "Watt"
 
-    target_section:
-      name: Target
-      icon: mdi:target
+    setpoint_section:
+      name: Setpoint
+      description: This section shows the grid inputs that determine the battery setpoints.
+      icon: mdi:gauge
       input:
         grid_entity:
           name: Grid
-          description: Entity measuring grid net consumption
+          description: Entity measuring net grid
+          default: null
           selector:
             entity:
               filter:
                 domain: sensor
                 device_class: power
+        setpoint_target_min:
+          name: Grid target minimum value
+          description: Lower limit for the Grid target band (in Watts). You can create a deadband (-50 and 50). Set them the same if you want a fixed target. High value for charging and negative value for discharging.
+          default: -200
+          selector:
+            number:
+              min: -10000
+              max: 5000
+              mode: box
+              unit_of_measurement: "Watt"
+        setpoint_target_max:
+          name: Grid target maximum value
+          description: Upper limit for the Grid target band (in Watts)
+          default: 200
+          selector:
+            number:
+              min: -5000
+              max: 10000
+              mode: box
+              unit_of_measurement: "Watt"
+
+    setpoint_advanced_section:
+      name: Advanced setpoint settings
+      description: Options to adjust or override the setpoint.
+      icon: mdi:pencil-ruler
+      collapsed: true
+      input:
         offset_entity:
           name: Offset entities
           description: Entities whose value (in Watts) should be subtracted from the grid sensor. E.g. Car charger power sensor
@@ -144,63 +182,49 @@ blueprint:
                   - sensor
                   - number
                   - input_number
-
-    setpoint_section:
-      name: Setpoint
-      description: Set min and max the same if you want a fixed target.
-      icon: mdi:flash
-      input:
-        setpoint_target_min:
-          name: Target minimum value
-          description: Lower limit for the Grid target band (in Watts)
-          default: -200
+        setpoint_template:
+          name: setpoint template
+          description: Custom code to change the setpoint for the batteries.
+          default: "{{ corrected_net_load }}"
           selector:
-            number:
-              min: -5000
-              max: 10000
-              mode: box
-        setpoint_target_max:
-          name: Target maximum value
-          description: Upper limit for the Grid target band (in Watts)
-          default: 200
-          selector:
-            number:
-              min: -5000
-              max: 10000
-              mode: box
+            template:
 
     smooth_section:
       name: smoothing
-      description: Various option to control the smoothing of the setpoint.
-      icon: mdi:tune
+      description: Various options to control setpoint smoothing.
+      icon: mdi:waves
+      collapsed: true
       input:
         smoothing_min_watts:
           name: Minimum differents
-          description: Hysteresis, minimum delta (in watts) between previous and new setpoints. This should not be lower than the Minimum Power of one battery.
+          description: Hysteresis, minimum difference (in watts) between the previous and new setpoints. This value should not be lower than the minimum power of a single battery.
           default: 25
           selector:
             number:
               min: 0
               max: 500
+              unit_of_measurement: "Watt"
         smoothing_max_watts:
           name: Maximum differents
-          description: Maximum delta (in watts) between previous and new setpoints.
+          description: Maximum difference between the previous and new setpoints
           default: 2000
           selector:
             number:
               min: 50
               max: 10000
+              unit_of_measurement: "Watt"
         smoothing_above:
           name: Smoothing above
-          description: Apply the smoothing factor only above this delta (in watts).
+          description: Apply smoothing only when the setpoint rises above this value.
           default: 1000
           selector:
             number:
               min: 0
               max: 5000
+              unit_of_measurement: "Watt"
         smoothing_factor:
           name: smoothing factor
-          description: Example with old setpoint 1500 new 500 and factor 0.7. The differents 1500-500= 1000*0.7=700 new setpoint will be 1500-700=800. 1 to disable.
+          description: Scales the change between setpoints. Example; old setpoint 1500 new 500 and factor 0.7. The differents 1500-500= 1000*0.7=700 new setpoint will be 1500-700=800. Set to 1 to disable.
           default: 0.7
           selector:
             number:
@@ -209,7 +233,7 @@ blueprint:
               max: 1
         smoothing_factor_zero:
           name: smoothing factor when passing zero
-          description: Same as above only this one is used when 0 is crossed. Set this lower to avoid switching between charge/discharge. 1 to disable
+          description: This smoothing factor is used when the setpoint crosses zero. Lower values can help to prevent switching between charge and discharge. Set to 1 to disable.
           default: 0.3
           selector:
             number:
@@ -218,25 +242,48 @@ blueprint:
               max: 1
 
     script_section:
-      name: Script
-      icon: mdi:tune
+      name: Script options
+      icon: mdi:cog
+      collapsed: true
       input:
+        start_condition:
+          name: Start conditions
+          description: "Optional conditions that must be met before this automation starts. "
+          default: []
+          selector:
+            condition:
+        stop_action_script:
+          name: Stop action
+          description: "Behavior when start conditions are not met. Be aware: choosing ‘do not run the script’ keeps the last battery setpoint unchanged."
+          default: "Run script with setpoint 0"
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - "Run script with setpoint 0"
+                - "Do not run the script"
+        stop_action_additional:
+          name: Additional stop actions
+          description: "Optional actions when start conditions are not met. Examples: send a notification, add a delay before run again, stop the automation, start another automation."
+          default: []
+          selector:
+            action:
         update_interval:
           name: Update interval
-          description: Time to wait before accepting new data from the grid sensor
+          description: Time to wait before processing new grid sensor readings.
           default:
             seconds: 10
           selector:
             duration: {}
         debug:
           name: Debug log
-          description: log variables in the trace
+          description: Include variables in the execution trace.
           default: false
           selector:
             boolean: {}
 
 variables:
-  # Battery selection
+  # Batttery selection
   device_ids: !input battery_device
   min_battery_level: !input battery_soc_min
   max_battery_level: !input battery_soc_max
@@ -258,8 +305,9 @@ variables:
   # Target
   grid_entity: !input grid_entity
   offset_entity: !input offset_entity
+  # input offset_template is direcly used
 
-  # setpoint
+  # Setpoint
   target_min: !input setpoint_target_min
   target_max: !input setpoint_target_max
 
@@ -271,6 +319,9 @@ variables:
   smoothing_factor_zero: !input smoothing_factor_zero
 
   # Script
+  start_condition: !input start_condition
+  stop_action_script: !input stop_action_script
+  stop_action_additional: !input stop_action_additional
   debug: !input debug
 
 trigger:
@@ -315,47 +366,104 @@ action:
 
         {{ total_ac_power.value }}
 
-      # Calculate new setpoint
+      # setpoint
       setpoint: >
-        {% set net_load = Battery_ac_power_total + grid %}
-        {% if net_load < target_min %}
-          {# te veel export -> laad batterij #}
-          {% set target = (net_load - offset_total ) - target_min %}
-        {% elif net_load > target_max %}
-          {# te veel import -> ontlaad batterij #}
-          {% set target = (net_load - offset_total) - target_max %}
-        {% else %}
-          {% set target = 0 - offset_total%}
-        {% endif %}
+        {{ 0 }}
 
-        {# --- minimale verschil in watts --- #}
-        {% if (target - Battery_ac_power_total) | abs < smoothing_min_watts %}
-          {% set raw_setpoint = Battery_ac_power_total %}
-        {% else %}
-          {% set raw_setpoint = target %}
-        {% endif %}
+  # start_condition false with hard stop, setpoint 0 stop is implicit
+  - choose:
+      - conditions:
+          - condition: not
+            conditions:
+              - condition: or
+                conditions:
+                  # No start_condition set
+                  - condition: template
+                    value_template: "{{ start_condition is none }}"
+                  # start_condition is true
+                  - condition: !input start_condition
+        sequence:
+          # Execute custom actions if defined
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ stop_action_additional is not none and stop_action_additional != [] }}"
+                sequence: !input stop_action_additional
+          # Handle stop_action option
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ stop_action == 'Do not run the script' }}"
+                sequence:
+                  - stop: "Stopped by stop_action"
+  # start_condition true
+  - choose:
+      - conditions:
+          - condition: or
+            conditions:
+              # No start_condition set
+              - condition: template
+                value_template: "{{ start_condition is none }}"
+              # start_condition is true
+              - condition: !input start_condition
 
-        {# --- maximale stap begrenzen in watts --- #}
-        {% if raw_setpoint != 0 %}
-          {% set raw_setpoint = [raw_setpoint, Battery_ac_power_total - smoothing_max_watts, min_setpoint] | max %}
-          {% set raw_setpoint = [raw_setpoint, Battery_ac_power_total + smoothing_max_watts, max_setpoint] | min %}
-        {% else %}
-          {% set raw_setpoint = 0 %}
-        {% endif %}
+        sequence:
+          - variables:
+              corrected_net_load: >
+                {% set net_load = Battery_ac_power_total + grid %}
+                {{ net_load - offset_total }}
+              setpoint_template: !input setpoint_template
+              setpoint: >
+                {# set net_load = Battery_ac_power_total + grid #}
+                {# set corrected_net_load = net_load - offset_total #}
 
-        {# --- nul-kruising detecteren en juiste smoothing factor kiezen --- #}
-        {% if (raw_setpoint > 0 and Battery_ac_power_total < 0) or  (raw_setpoint < 0 and Battery_ac_power_total > 0) %}
-          {% set sf = smoothing_factor_zero  %}
-        {% elif raw_setpoint > smoothing_above %}
-          {% set sf = smoothing_factor %} 
-        {% else %}
-          {% set sf = 1 %} 
-        {% endif %}
 
-        {# --- exponentiële smoothing toepassen --- #}
-        {% set setpoint_smooth = sf * raw_setpoint + (1 - sf) * Battery_ac_power_total %}
+                {# --- apply offset template if valid ---#}
+                {% set corrected_net_load = setpoint_template | float(corrected_net_load) %}
 
-        {{ setpoint_smooth | round(0) }}
+
+                {# --- determine target setpoint ---- #}
+                {% set target = 0 %}
+                {% if corrected_net_load < target_min %}
+                  {# te veel export -> laad batterij #}
+                  {% set target = corrected_net_load  - target_min %}
+                {% elif corrected_net_load > target_max %}
+                  {# te veel import -> ontlaad batterij #}
+                  {% set target = corrected_net_load - target_max %}
+                {% endif %}
+
+
+                {# --- minimal difference --- #}
+                {% if (target - Battery_ac_power_total) | abs < smoothing_min_watts %}
+                  {% set raw_setpoint = Battery_ac_power_total %}
+                {% else %}
+                  {% set raw_setpoint = target %}
+                {% endif %}
+
+                {# --- maximal difference --- #}
+                {% set raw_setpoint = [raw_setpoint, (Battery_ac_power_total - smoothing_max_watts)] | max %}
+                {% set raw_setpoint = [raw_setpoint, (Battery_ac_power_total + smoothing_max_watts)] | min %}
+
+
+                {# --- absolute limits --- #}
+                {% set raw_setpoint = [raw_setpoint, min_setpoint] | max %}
+                {% set raw_setpoint = [raw_setpoint, max_setpoint] | min %}
+
+
+                {# --- crossing zero detection and smoothing --- #}
+                {% if (raw_setpoint > 0 and Battery_ac_power_total < 0) or  (raw_setpoint < 0 and Battery_ac_power_total > 0) %}
+                  {% set sf = smoothing_factor_zero  %}
+                {% elif raw_setpoint > smoothing_above %}
+                  {% set sf = smoothing_factor %} 
+                {% else %}
+                  {% set sf = 1 %} {# --- No smoothing below threshold --- #}
+                {% endif %}
+
+                {# --- exponential smoothing --- #}
+                {% set setpoint_smooth = sf * raw_setpoint + (1 - sf) * Battery_ac_power_total %}
+
+                {{ setpoint_smooth | round(0) }}
+
 
   - choose:
       - conditions:
@@ -383,7 +491,7 @@ action:
         {% if sort_by_soc >= 5  %}
           {% set soc_map = namespace(list=[]) %}
           {% for dev in device_ids %}
-            {% set soc_entity = device_entities(dev) | select("search", "_state_of_charge$") | list %}
+            {% set soc_entity = device_entities(dev) | select("search", "_[a-z0-9]{4}_state_of_charge$$") | list %}
             {% if soc_entity %}
               {% set soc_value = states(soc_entity[0]) | int %}
               {% if setpoint < 0 %}
@@ -407,12 +515,7 @@ action:
         {% endif %}
 
       battery_count: >
-        {% if device_ids is string %}
-          {% set ids = [device_ids] %}
-        {% else %}
-          {% set ids = device_ids %}
-        {% endif %}
-        {{ ids | count }}
+        {{ device_ids | count }}
 
       priority_offset: >
         {% if sort_by_soc < 5 %}
@@ -420,7 +523,6 @@ action:
         {% else%}    
             {{ 0 }}
         {% endif %}
-
 
   - choose:
       - conditions:
@@ -452,7 +554,7 @@ action:
       battery_soc_entity: |
         {% set entities = namespace(soc=[]) %}
         {% for device_id in device_ids %}
-        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_state_of_charge$") | list | join("")] %}
+        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_[a-z0-9]{4}_state_of_charge$$") | list | join("")] %}
         {% endfor %}
         {{ entities.soc[priority_offset:] + entities.soc[:priority_offset] }}
       battery_state_entity: |
