@@ -175,7 +175,7 @@ action:
       battery_soc_entity: |
         {% set entities = namespace(soc=[]) %}
         {% for device_id in device_ids %}
-        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_[a-z0-9]{4}_state_of_charge$") | list | join("")] %}
+        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","(?<!minimum_)state_of_charge$") | list | join("")] %}
         {% endfor %}
         {{ entities.soc[priority_offset:] + entities.soc[:priority_offset] }}
       battery_state_entity: |

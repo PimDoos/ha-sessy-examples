@@ -31,6 +31,7 @@ blueprint:
             device:
               filter:
                 integration: sessy
+                model: "Sessy Battery"
               multiple: true
         battery_soc_min:
           name: Minimum State of Charge
@@ -491,7 +492,7 @@ action:
         {% if sort_by_soc >= 5  %}
           {% set soc_map = namespace(list=[]) %}
           {% for dev in device_ids %}
-            {% set soc_entity = device_entities(dev) | select("search", "_[a-z0-9]{4}_state_of_charge$$") | list %}
+            {% set soc_entity = device_entities(dev) | select("search", "(?<!minimum_)state_of_charge$") | list %}
             {% if soc_entity %}
               {% set soc_value = states(soc_entity[0]) | int %}
               {% if setpoint < 0 %}
@@ -554,7 +555,7 @@ action:
       battery_soc_entity: |
         {% set entities = namespace(soc=[]) %}
         {% for device_id in device_ids %}
-        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","_[a-z0-9]{4}_state_of_charge$$") | list | join("")] %}
+        {% set entities.soc = entities.soc + [device_entities(device_id) | list | select("search","(?<!minimum_)state_of_charge$") | list | join("")] %}
         {% endfor %}
         {{ entities.soc[priority_offset:] + entities.soc[:priority_offset] }}
       battery_state_entity: |
