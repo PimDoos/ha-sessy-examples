@@ -253,7 +253,7 @@ blueprint:
           default: []
           selector:
             condition:
-        stop_action_script:
+        stop_action:
           name: Stop action
           description: "Behavior when start conditions are not met. Be aware: choosing ‘do not run the script’ keeps the last battery setpoint unchanged."
           default: "Run script with setpoint 0"
@@ -321,7 +321,7 @@ variables:
 
   # Script
   start_condition: !input start_condition
-  stop_action_script: !input stop_action_script
+  stop_action: !input stop_action
   stop_action_additional: !input stop_action_additional
   debug: !input debug
 
