@@ -47,6 +47,6 @@ Charges Sessy to the specified amount, then activates a certain strategy.
 ## Sessy Dynamic Schedule with ApexCharts
 Display the power schedule and energy prices for the dynamic strategy within Home Assistant using ApexCharts. 
 
-[![Dynamic schedule in a graph](cards/DynamicSchedule.png)](cards/DynamicSchedule.md)
+[![Dynamic schedule in a graph](cards/DynamicSchedule_v3.png)](cards/DynamicSchedule.md)
 
-[Learn More](cards/DynamicSchedule_v3.md)
+[Learn More](cards/DynamicSchedule.md)
