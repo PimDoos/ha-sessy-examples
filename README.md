@@ -49,4 +49,4 @@ Display the power schedule and energy prices for the dynamic strategy within Hom
 
 [![Dynamic schedule in a graph](cards/DynamicSchedule.png)](cards/DynamicSchedule.md)
 
-[Learn More](cards/DynamicSchedule.md)
+[Learn More](cards/DynamicSchedule_v3.md)
