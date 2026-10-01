@@ -3,12 +3,93 @@ Since ha-sessy 0.6.0 and Sessy firmware 1.6.5, Sessy's dynamic schedule and ener
 
 With the [ApexCharts custom card](https://github.com/RomRider/apexcharts-card?tab=readme-ov-file#installation) you can show this data in a graph.
 
-![Dynamic schedule in a graph](DynamicSchedule.png)
-
-For a graph with today and tomorrow in one chart, see [this page](DynamicScheduleTodayTomorrow.md).
+![Dynamic schedule in a graph](DynamicSchedule_v3.png)
 
 # Card configuration
 **Note**: Replace 'sessy_XXXX' in the examples below with the name of your own Sessy.
+
+## DynamicSchedule V3
+
+Applicable to Sessy with firmware 1.10.0 or higher and HA-Sessy 1.0.3 or higher. Shows all dynamic schedule and price data in one graph, now in 15 min steps, to account for quarterly prices and schedule steps.
+
+```yaml
+type: custom:apexcharts-card
+header:
+  show: true
+  title: Sessy
+  show_states: true
+  colorize_states: true
+now:
+  show: true
+graph_span: 2d
+span:
+  start: day
+color_list:
+  - orange
+  - blue
+apex_config:
+  legend:
+    show: false
+yaxis:
+  - id: power
+    decimals: 0
+    opposite: true
+  - id: price
+    decimals: 3
+series:
+  - entity: sensor.sessy_1_power_schedule
+    yaxis_id: power
+    name: Power Schedule
+    show:
+      in_header: raw
+    type: area
+    curve: stepline
+    opacity: 0.4
+    stroke_width: 1
+    data_generator: |
+      const STEP = 15 * 60 * 1000;
+      const changes = Object.entries(entity.attributes.dynamic_schedule || {})
+        .map(([k, v]) => [new Date(k).getTime(), Number(v)])
+        .sort((a, b) => a[0] - b[0]);
+      if (!changes.length) return [];
+
+      const from = new Date(start).getTime();
+      const to = new Date(end).getTime();
+
+      const data = [];
+      let j = 0, value = 0;
+      for (let ts = from; ts < to; ts += STEP) {
+        while (j < changes.length && changes[j][0] <= ts) value = changes[j++][1];
+        data.push([ts, value]);
+      }
+      return data;
+  - entity: sensor.sessy_1_energy_price
+    yaxis_id: price
+    name: Energy Price
+    type: line
+    curve: stepline
+    stroke_width: 2
+    show:
+      in_header: raw
+    float_precision: 5
+    data_generator: |
+      const STEP = 15 * 60 * 1000;
+      const prices = Object.entries(entity.attributes.energy_prices || {})
+        .map(([k, v]) => [new Date(k).getTime(), Number(v)])
+        .sort((a, b) => a[0] - b[0]);
+      if (!prices.length) return [];
+
+      const from = new Date(start).getTime();
+      const to = new Date(end).getTime();
+
+      const data = [];
+      let j = 0, value = null;
+      for (let ts = from; ts < to; ts += STEP) {
+        while (j < prices.length && prices[j][0] <= ts) value = prices[j++][1];
+        data.push([ts, value]);
+      }
+      return data;
+```
 
 ## DynamicSchedule V2
 
